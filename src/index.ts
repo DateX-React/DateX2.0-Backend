@@ -1,3 +1,5 @@
+import { config } from "dotenv";
+config();
 import "reflect-metadata";
 import express from "express";
 import http from "http";
@@ -7,34 +9,33 @@ import { ApolloServerPluginDrainHttpServer } from "apollo-server-core";
 import { AppDataSource } from "./data-source/AppDataSource";
 import typeDefs from "./graphql/typedefs";
 import resolvers from "./graphql/resolvers";
-import { PORT } from "./config";
+
+const PORT = process.env.PORT || 4040;
 
 const startServer = async () => {
-  const app = express();
-  const httpServer = http.createServer(app);
+    const app = express();
+    const httpServer = http.createServer(app);
 
-  const server = new ApolloServer({
-    typeDefs,
-    resolvers,
-    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
-    context: ({ req }) => ({ req }),
-  });
+    const server = new ApolloServer({
+        typeDefs,
+        resolvers,
+        plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+        context: ({ req }) => ({ req }),
+    });
 
-  await server.start();
-  server.applyMiddleware({
-    app,
-  });
+    await server.start();
+    server.applyMiddleware({
+        app,
+    });
 
-  AppDataSource.initialize().then(() => {
-    console.log("⚡ Connected to Postgres");
-  });
+    AppDataSource.initialize().then(() => {
+        console.log("⚡ Connected to Postgres");
+    });
 
-  await new Promise((resolve) =>
-    httpServer.listen({ port: PORT }, resolve)
-  );
-  console.log(
-    `🚀 Server ready at http://localhost:${PORT}${server.graphqlPath}`
-  );
+    await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
+    console.log(
+        `🚀 Server ready at http://localhost:${PORT}${server.graphqlPath}`
+    );
 };
 
 startServer();

@@ -8,77 +8,77 @@ import { generateToken } from "../../util/jwt-functions";
 const userRepository = AppDataSource.getRepository(User);
 
 export default {
-  Query: {
-    getUser: async () => {
-      const users = await userRepository.find();
+    Query: {
+        getUser: async (_: any, { username }: any) => {
+            const user = await userRepository.findOne({ where: { username } });
 
-      return users;
+            if (!user) {
+                throw new Error(`GetUser: Username(${username}) not found`);
+            }
+
+            return user;
+        },
     },
-  },
-  Mutation: {
-    register: async (
-      _: any,
-      { registerInput: { username, email, password, age } }: any
-    ) => {
-      // check if username has already been taken
-      const searchUsername = await userRepository.findOneBy({
-        username,
-      });
+    Mutation: {
+        register: async (
+            _: any,
+            { registerInput: { username, email, password, age } }: any
+        ) => {
+            // check if username has already been taken
+            const searchUsername = await userRepository.findOneBy({
+                username,
+            });
 
-      if (searchUsername) {
-        throw new Error("Register: Username has already been taken");
-      }
-      // check if password has already been taken
-      const searchEmail = await userRepository.findOneBy({ email });
+            if (searchUsername) {
+                throw new Error("Register: Username has already been taken");
+            }
+            // check if password has already been taken
+            const searchEmail = await userRepository.findOneBy({ email });
 
-      if (searchEmail) {
-        throw new Error("Register: Email has already been taken");
-      }
+            if (searchEmail) {
+                throw new Error("Register: Email has already been taken");
+            }
 
-      // encrypt password using bcrypt
-      password = await bcrypt.hash(password, 12);
+            // encrypt password using bcrypt
+            password = await bcrypt.hash(password, 12);
 
-      // create a new user for saving in postgres
-      const newUser = new User();
-      newUser.username = username;
-      newUser.email = email;
-      newUser.password = password;
-      newUser.age = age;
-      newUser.id = uuidv4();
+            // create a new user for saving in postgres
+            const newUser = new User();
+            newUser.username = username;
+            newUser.email = email;
+            newUser.password = password;
+            newUser.age = age;
+            newUser.id = uuidv4();
 
-      // save new user in postgres
-      const res = await userRepository.save(newUser);
+            // save new user in postgres
+            const res = await userRepository.save(newUser);
 
-      const token = generateToken(res);
+            const token = generateToken(res);
 
-      return {
-        ...res,
-        token,
-      };
+            return {
+                ...res,
+                token,
+            };
+        },
+        login: async (
+            _: any,
+            { username, password }: { username: string; password: string }
+        ) => {
+            // check if user exists in database
+            const user = await userRepository.findOneBy({ username });
+
+            if (!user) throw new Error("Login: User does not exist");
+
+            // check if password is correct
+            const passwordMatch = await bcrypt.compare(password, user.password);
+            if (!passwordMatch) throw new Error("Login: Incorrect password");
+
+            const token = generateToken(user);
+
+            return {
+                ...user,
+                token,
+            };
+        },
     },
-    login: async (
-      _: any,
-      { username, password }: { username: string; password: string }
-    ) => {
-      // check if user exists in database
-      const user = await userRepository.findOneBy({ username });
-
-      if (!user) throw new Error("Login: User does not exist");
-
-      // check if password is correct
-      const passwordMatch = await bcrypt.compare(
-        password,
-        user.password
-      );
-      if (!passwordMatch)
-        throw new Error("Login: Incorrect password");
-
-      const token = generateToken(user);
-
-      return {
-        ...user,
-        token,
-      };
-    },
-  },
 };
